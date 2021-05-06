@@ -84,6 +84,8 @@ public class MTIAsyncVideoCompositionRequestHandler {
     private let filter: (Request) throws -> MTIImage
     private let queue: DispatchQueue?
     
+    var customTransforms = [(CMTimeRange, CGAffineTransform)]()
+    
     @available(*, deprecated, message: "Use init(context:tracks:on:filter:) instead.")
     public init(context: MTIContext, tracks: [AVAssetTrack], queue: DispatchQueue = .main, filter: @escaping (Request) throws -> MTIImage) {
         assert(tracks.count > 0)
@@ -101,6 +103,22 @@ public class MTIAsyncVideoCompositionRequestHandler {
         self.context = context
         self.filter = filter
         self.queue = queue
+    }
+
+    private static func makeTransformedSourceImage(from request: MTIMutableVideoCompositionRequest, track: AVAssetTrack, customTransform: CGAffineTransform) -> MTIImage? {
+        guard let pixelBuffer = request.sourceFrame(byTrackID: track.trackID) else {
+            return nil
+        }
+        assert(request.renderContext.renderTransform.isIdentity == true)
+        let image = MTIImage(cvPixelBuffer: pixelBuffer, alphaType: .alphaIsOne)
+        if request.isTrackTransformApplied || customTransform.isIdentity {
+            return image
+        }
+        var trackTransform = customTransform
+        trackTransform.tx = 0
+        trackTransform.ty = 0
+        let transform = CATransform3DMakeAffineTransform(trackTransform.inverted())
+        return MTITransformFilterApplyTransformToImage(image, transform, 0, 1, MTITransformFilter.defaultViewport(for: image), .unspecified)
     }
     
     private static func makeTransformedSourceImage(from request: MTIMutableVideoCompositionRequest, track: AVAssetTrack) -> MTIImage? {
@@ -131,7 +149,9 @@ public class MTIAsyncVideoCompositionRequestHandler {
         if (request as? MTITrackedVideoCompositionRequest)?.isCancelled == true { return }
         
         let sourceFrames = self.tracks.reduce(into: [CMPersistentTrackID: MTIImage]()) { (frames, track) in
-            if let image = MTIAsyncVideoCompositionRequestHandler.makeTransformedSourceImage(from: request, track: track) {
+            //if let image = MTIAsyncVideoCompositionRequestHandler.makeTransformedSourceImage(from: request, track: track) {
+            if let transform = customTransforms.first(where: { $0.0.containsTime(request.compositionTime) }).1,
+               let image = MTIAsyncVideoCompositionRequestHandler.makeTransformedSourceImage(from: request, track: track, customTransform: transform) {
                 frames[track.trackID] = image
             }
         }
@@ -357,6 +377,30 @@ public class MTIVideoComposition {
         
         videoComposition.customVideoCompositorClass = Compositor.self
         let handler = MTIAsyncVideoCompositionRequestHandler(context: context, tracks: videoTracks, on: queue, filter: filter)
+        videoComposition.instructions = [Compositor.Instruction(handler: handler.handle(request:), timeRange: CMTimeRange(start: .zero, duration: CMTime(value: CMTimeValue.max, timescale: 48000)))]
+    }
+
+    public init(asset inputAsset: AVAsset, customTransforms: [(CMTimeRange, CGAffineTransform)], context: MTIContext, queue: DispatchQueue?, filter: @escaping (MTIAsyncVideoCompositionRequestHandler.Request) throws -> MTIImage) {
+        asset = inputAsset.copy() as! AVAsset
+        videoComposition = AVMutableVideoComposition(propertiesOf: asset)
+        let videoTracks = asset.tracks(withMediaType: .video)
+        
+        /// AVMutableVideoComposition's renderSize property is buggy with some assets. Calculate the renderSize here based on the documentation of `AVMutableVideoComposition(propertiesOf:)`
+        if let composition = asset as? AVComposition {
+            videoComposition.renderSize = composition.naturalSize
+        } else {
+            var renderSize: CGSize = .zero
+            for videoTrack in videoTracks {
+                let size = videoTrack.naturalSize.applying(videoTrack.preferredTransform)
+                renderSize.width = max(renderSize.width, abs(size.width))
+                renderSize.height = max(renderSize.height, abs(size.height))
+            }
+            videoComposition.renderSize = renderSize
+        }
+        
+        videoComposition.customVideoCompositorClass = Compositor.self
+        let handler = MTIAsyncVideoCompositionRequestHandler(context: context, tracks: videoTracks, on: queue, filter: filter)
+        handler.customTransforms = customTransforms
         videoComposition.instructions = [Compositor.Instruction(handler: handler.handle(request:), timeRange: CMTimeRange(start: .zero, duration: CMTime(value: CMTimeValue.max, timescale: 48000)))]
     }
 }
