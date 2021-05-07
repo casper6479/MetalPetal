@@ -150,7 +150,7 @@ public class MTIAsyncVideoCompositionRequestHandler {
         
         let sourceFrames = self.tracks.reduce(into: [CMPersistentTrackID: MTIImage]()) { (frames, track) in
             //if let image = MTIAsyncVideoCompositionRequestHandler.makeTransformedSourceImage(from: request, track: track) {
-            if let transform = customTransforms.first(where: { $0.0.containsTime(request.compositionTime) }).1,
+            if let transform = customTransforms.first(where: { $0.0.containsTime(request.compositionTime) })?.1,
                let image = MTIAsyncVideoCompositionRequestHandler.makeTransformedSourceImage(from: request, track: track, customTransform: transform) {
                 frames[track.trackID] = image
             }
