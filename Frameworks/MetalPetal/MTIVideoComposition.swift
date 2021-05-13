@@ -114,11 +114,19 @@ public class MTIAsyncVideoCompositionRequestHandler {
         if request.isTrackTransformApplied || customTransform.isIdentity {
             return image
         }
+        
         var trackTransform = customTransform
         trackTransform.tx = 0
         trackTransform.ty = 0
+        
         let transform = CATransform3DMakeAffineTransform(trackTransform.inverted())
-        return MTITransformFilterApplyTransformToImage(image, transform, 0, 1, MTITransformFilter.defaultViewport(for: image), .unspecified)
+        
+        let viewport = CGRect(x: -request.renderContext.size.width / 2.0,
+                              y: -request.renderContext.size.height / 2.0,
+                              width: request.renderContext.size.width,
+                              height: request.renderContext.size.height)
+        
+        return MTITransformFilterApplyTransformToImage(image, transform, 0, 1, viewport, .unspecified)
     }
     
     private static func makeTransformedSourceImage(from request: MTIMutableVideoCompositionRequest, track: AVAssetTrack) -> MTIImage? {
@@ -149,10 +157,15 @@ public class MTIAsyncVideoCompositionRequestHandler {
         if (request as? MTITrackedVideoCompositionRequest)?.isCancelled == true { return }
         
         let sourceFrames = self.tracks.reduce(into: [CMPersistentTrackID: MTIImage]()) { (frames, track) in
-            //if let image = MTIAsyncVideoCompositionRequestHandler.makeTransformedSourceImage(from: request, track: track) {
-            if let transform = customTransforms.first(where: { $0.0.containsTime(request.compositionTime) })?.1,
-               let image = MTIAsyncVideoCompositionRequestHandler.makeTransformedSourceImage(from: request, track: track, customTransform: transform) {
-                frames[track.trackID] = image
+            if customTransforms.count > 0 {
+                if let transform = customTransforms.first(where: { $0.0.containsTime(request.compositionTime) })?.1,
+                   let image = MTIAsyncVideoCompositionRequestHandler.makeTransformedSourceImage(from: request, track: track, customTransform: transform) {
+                    frames[track.trackID] = image
+                }
+            } else {
+                if let image = MTIAsyncVideoCompositionRequestHandler.makeTransformedSourceImage(from: request, track: track) {
+                    frames[track.trackID] = image
+                }
             }
         }
         guard sourceFrames.count > 0 else {
