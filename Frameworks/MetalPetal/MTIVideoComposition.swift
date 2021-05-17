@@ -275,19 +275,20 @@ public class MTIVideoComposition {
             
             let timeRange: CMTimeRange
             
-            let enablePostProcessing: Bool = false
+            let enablePostProcessing: Bool = true
             
-            let containsTweening: Bool = true
+            let containsTweening: Bool = false
             
-            let requiredSourceTrackIDs: [NSValue]? = nil
+            let requiredSourceTrackIDs: [NSValue]?
             
             let passthroughTrackID: CMPersistentTrackID = kCMPersistentTrackID_Invalid
             
             let handler: Handler
             
-            init(handler: @escaping Handler, timeRange: CMTimeRange) {
+            init(handler: @escaping Handler, timeRange: CMTimeRange, requiredSourceTrackIDs: [NSValue]? = nil) {
                 self.handler = handler
                 self.timeRange = timeRange
+                self.requiredSourceTrackIDs = requiredSourceTrackIDs
             }
         }
         
@@ -390,7 +391,8 @@ public class MTIVideoComposition {
         
         videoComposition.customVideoCompositorClass = Compositor.self
         let handler = MTIAsyncVideoCompositionRequestHandler(context: context, tracks: videoTracks, on: queue, filter: filter)
-        videoComposition.instructions = [Compositor.Instruction(handler: handler.handle(request:), timeRange: CMTimeRange(start: .zero, duration: CMTime(value: CMTimeValue.max, timescale: 48000)))]
+        let requiredTrackIds = asset.tracks(withMediaType: .video).compactMap { NSNumber(value: Int($0.trackID)) }
+        videoComposition.instructions = [Compositor.Instruction(handler: handler.handle(request:), timeRange: CMTimeRange(start: .zero, duration: CMTime(value: CMTimeValue.max, timescale: 48000)), requiredSourceTrackIDs: requiredTrackIds)]
     }
 
     public init(asset inputAsset: AVAsset, customTransforms: [(CMTimeRange, CGAffineTransform)], context: MTIContext, queue: DispatchQueue?, filter: @escaping (MTIAsyncVideoCompositionRequestHandler.Request) throws -> MTIImage) {
@@ -414,6 +416,8 @@ public class MTIVideoComposition {
         videoComposition.customVideoCompositorClass = Compositor.self
         let handler = MTIAsyncVideoCompositionRequestHandler(context: context, tracks: videoTracks, on: queue, filter: filter)
         handler.customTransforms = customTransforms
-        videoComposition.instructions = [Compositor.Instruction(handler: handler.handle(request:), timeRange: CMTimeRange(start: .zero, duration: CMTime(value: CMTimeValue.max, timescale: 48000)))]
+        
+        let requiredTrackIds = asset.tracks(withMediaType: .video).compactMap { NSNumber(value: Int($0.trackID)) }
+        videoComposition.instructions = [Compositor.Instruction(handler: handler.handle(request:), timeRange: CMTimeRange(start: .zero, duration: CMTime(value: CMTimeValue.max, timescale: 48000)), requiredSourceTrackIDs: requiredTrackIds)]
     }
 }
