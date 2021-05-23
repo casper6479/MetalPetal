@@ -373,7 +373,7 @@ public class MTIVideoComposition {
     /// - A renderScale of 1.0.
     public init(asset inputAsset: AVAsset, context: MTIContext, queue: DispatchQueue?, filter: @escaping (MTIAsyncVideoCompositionRequestHandler.Request) throws -> MTIImage) {
         asset = inputAsset.copy() as! AVAsset
-        videoComposition = AVMutableVideoComposition(propertiesOf: asset)
+        videoComposition = AVMutableVideoComposition()
         let videoTracks = asset.tracks(withMediaType: .video)
         
         /// AVMutableVideoComposition's renderSize property is buggy with some assets. Calculate the renderSize here based on the documentation of `AVMutableVideoComposition(propertiesOf:)`
@@ -392,12 +392,16 @@ public class MTIVideoComposition {
         videoComposition.customVideoCompositorClass = Compositor.self
         let handler = MTIAsyncVideoCompositionRequestHandler(context: context, tracks: videoTracks, on: queue, filter: filter)
         let requiredTrackIds = asset.tracks(withMediaType: .video).compactMap { NSNumber(value: Int($0.trackID)) }
-        videoComposition.instructions = [Compositor.Instruction(handler: handler.handle(request:), timeRange: CMTimeRange(start: .zero, duration: CMTime(value: CMTimeValue.max, timescale: 48000)), requiredSourceTrackIDs: requiredTrackIds)]
+        videoComposition.instructions = [Compositor.Instruction(handler: handler.handle(request:),
+                                                                timeRange: CMTimeRange(start: .zero,
+                                                                                       duration: asset.duration),
+                                                                requiredSourceTrackIDs: requiredTrackIds)]
     }
 
     public init(asset inputAsset: AVAsset, customTransforms: [(CMTimeRange, CGAffineTransform)], context: MTIContext, queue: DispatchQueue?, filter: @escaping (MTIAsyncVideoCompositionRequestHandler.Request) throws -> MTIImage) {
         asset = inputAsset.copy() as! AVAsset
-        videoComposition = AVMutableVideoComposition(propertiesOf: asset)
+        videoComposition = AVMutableVideoComposition()
+        
         let videoTracks = asset.tracks(withMediaType: .video)
         
         /// AVMutableVideoComposition's renderSize property is buggy with some assets. Calculate the renderSize here based on the documentation of `AVMutableVideoComposition(propertiesOf:)`
@@ -418,6 +422,9 @@ public class MTIVideoComposition {
         handler.customTransforms = customTransforms
         
         let requiredTrackIds = asset.tracks(withMediaType: .video).compactMap { NSNumber(value: Int($0.trackID)) }
-        videoComposition.instructions = [Compositor.Instruction(handler: handler.handle(request:), timeRange: CMTimeRange(start: .zero, duration: CMTime(value: CMTimeValue.max, timescale: 48000)), requiredSourceTrackIDs: requiredTrackIds)]
+        videoComposition.instructions = [Compositor.Instruction(handler: handler.handle(request:),
+                                                                timeRange: CMTimeRange(start: .zero,
+                                                                                       duration: asset.duration),
+                                                                requiredSourceTrackIDs: requiredTrackIds)]
     }
 }
