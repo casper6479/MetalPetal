@@ -374,7 +374,9 @@ public class MTIVideoComposition {
     public init(asset inputAsset: AVAsset, context: MTIContext, queue: DispatchQueue?, filter: @escaping (MTIAsyncVideoCompositionRequestHandler.Request) throws -> MTIImage) {
         asset = inputAsset.copy() as! AVAsset
         videoComposition = AVMutableVideoComposition()
-        videoComposition.sourceTrackIDForFrameTiming = kCMPersistentTrackID_Invalid
+        if #available(iOS 11.0, *) {
+            videoComposition.sourceTrackIDForFrameTiming = kCMPersistentTrackID_Invalid
+        }
         
         let videoTracks = asset.tracks(withMediaType: .video)
         /// AVMutableVideoComposition's renderSize property is buggy with some assets. Calculate the renderSize here based on the documentation of `AVMutableVideoComposition(propertiesOf:)`
@@ -402,7 +404,9 @@ public class MTIVideoComposition {
     public init(asset inputAsset: AVAsset, customTransforms: [(CMTimeRange, CGAffineTransform)], context: MTIContext, queue: DispatchQueue?, filter: @escaping (MTIAsyncVideoCompositionRequestHandler.Request) throws -> MTIImage) {
         asset = inputAsset.copy() as! AVAsset
         videoComposition = AVMutableVideoComposition()
-        videoComposition.sourceTrackIDForFrameTiming = kCMPersistentTrackID_Invalid
+        if #available(iOS 11.0, *) {
+            videoComposition.sourceTrackIDForFrameTiming = kCMPersistentTrackID_Invalid
+        }
         
         let videoTracks = asset.tracks(withMediaType: .video)
         
