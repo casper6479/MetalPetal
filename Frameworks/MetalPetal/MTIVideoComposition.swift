@@ -275,9 +275,9 @@ public class MTIVideoComposition {
             
             let timeRange: CMTimeRange
             
-            let enablePostProcessing: Bool = true
+            let enablePostProcessing: Bool = false
             
-            let containsTweening: Bool = false
+            let containsTweening: Bool = true
             
             let requiredSourceTrackIDs: [NSValue]?
             
