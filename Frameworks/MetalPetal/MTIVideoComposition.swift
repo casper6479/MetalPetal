@@ -65,7 +65,6 @@ public class MTIAsyncVideoCompositionRequestHandler {
     
     public enum Error: Swift.Error {
         case cannotGenerateOutputPixelBuffer
-        case noSourceFrame
     }
     
     public struct Request {
@@ -167,10 +166,6 @@ public class MTIAsyncVideoCompositionRequestHandler {
                     frames[track.trackID] = image
                 }
             }
-        }
-        guard sourceFrames.count > 0 else {
-            self.enqueue { request.finish(.failure(Error.noSourceFrame)) }
-            return
         }
         guard let pixelBuffer = request.renderContext.newPixelBuffer() else {
             self.enqueue { request.finish(.failure(Error.cannotGenerateOutputPixelBuffer)) }
