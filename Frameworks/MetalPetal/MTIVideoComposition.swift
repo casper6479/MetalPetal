@@ -110,7 +110,7 @@ public class MTIAsyncVideoCompositionRequestHandler {
         }
         assert(request.renderContext.renderTransform.isIdentity == true)
         let image = MTIImage(cvPixelBuffer: pixelBuffer, alphaType: .alphaIsOne)
-        if request.isTrackTransformApplied || customTransform.isIdentity {
+        if request.isTrackTransformApplied {
             return image
         }
         
